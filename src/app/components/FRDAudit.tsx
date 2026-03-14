@@ -34,11 +34,62 @@ interface FRDAuditProps {
   onDownload: () => void;
 }
 
-export function FRDAudit({ data, onUpdate, onShare, onDownload }: FRDAuditProps) {
+export function FRDAudit({ data, onUpdate, onShare }: FRDAuditProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
   const [editingIssue, setEditingIssue] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  const handleDownload = () => {
+    const severityIcon = (s: string) => s === 'critical' ? '🔴' : s === 'warning' ? '🟡' : 'ℹ️';
+    const lines: string[] = [
+      `# FRD Audit Report: ${data.fileName}`,
+      ``,
+      `**Analyzed on:** ${data.analyzedDate}  `,
+      `**Sheets:** ${data.totalSheets} | **Use Cases:** ${data.totalUseCases}  `,
+      `**Quality Score:** ${data.score}%`,
+      ``,
+      `## Summary`,
+      ``,
+      `| Severity | Count |`,
+      `|----------|-------|`,
+      `| 🔴 Critical | ${data.summary.critical} |`,
+      `| 🟡 Warning | ${data.summary.warnings} |`,
+      `| ℹ️ Info | ${data.summary.info} |`,
+      ``,
+      `---`,
+      ``,
+      `## Issues`,
+      ``,
+    ];
+
+    data.issues.forEach((issue, idx) => {
+      lines.push(`### ${idx + 1}. ${severityIcon(issue.severity)} \`${issue.id}\` — ${issue.issue}`);
+      lines.push(``);
+      lines.push(`**Category:** ${issue.category}  `);
+      lines.push(`**Location:** ${issue.location}  `);
+      lines.push(`**Severity:** ${issue.severity}  `);
+      lines.push(`**Status:** ${issue.status}`);
+      lines.push(``);
+      lines.push(`**Detail:**  `);
+      lines.push(issue.detail);
+      lines.push(``);
+      lines.push(`**Suggestion:**  `);
+      lines.push(issue.suggestion);
+      lines.push(``);
+      lines.push(`---`);
+      lines.push(``);
+    });
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FRD-Audit-${data.fileName.replace(/\.[^/.]+$/, '')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Audit report downloaded as Markdown');
+  };
 
   const categories = ['all', ...Array.from(new Set(data.issues.map(i => i.category)))];
 
@@ -101,19 +152,19 @@ export function FRDAudit({ data, onUpdate, onShare, onDownload }: FRDAuditProps)
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onDownload}
+              onClick={handleDownload}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               Download Report
             </button>
-            <button
+            {/* <button
               onClick={onShare}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
             >
               <Share2 className="w-4 h-4" />
               Share via Cliq
-            </button>
+            </button> */}
           </div>
         </div>
 
