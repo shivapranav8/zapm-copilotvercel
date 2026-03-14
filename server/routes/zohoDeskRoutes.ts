@@ -117,6 +117,17 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
     console.log(`🎫 [Zoho Desk] Bulk generating responses for ${ticketIds.length} ticket(s)...`);
 
     const token = req.session.zoho!.accessToken;
+    const email = req.session.zoho!.user?.email || '';
+
+    // Fetch agent info once for the bulk operation
+    let responderName = 'Shiva Pranav S';
+    try {
+        const agent = await getMyAgentInfo(token, email);
+        responderName = agent.name;
+        console.log(`👤 [Zoho Desk] Bulk generating as responder: ${responderName}`);
+    } catch (e) {
+        console.warn('⚠️ [bulk-generate] Could not resolve agent name, falling back to default:', e);
+    }
 
     // Process each ticket directly by ID — no need to fetch all tickets first
     const results = await Promise.allSettled(
@@ -156,6 +167,7 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
                 developerNotes: solution,
                 problemStatement: ctx.publicContext,
                 includeDelayApology,
+                responderName,
             });
 
             return {

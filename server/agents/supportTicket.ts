@@ -11,6 +11,7 @@ const SupportTicketInputSchema = z.object({
     prdContent: z.string().optional().describe('Relevant PRD content or context'),
     includeDelayApology: z.boolean().optional().describe('Whether to include "Sorry for the delay" (true if ticket is >7 days old)'),
     userName: z.string().optional().describe('Customer name to use in greeting (defaults to "there" if not provided)'),
+    responderName: z.string().optional().describe('Full name of the support agent (responder) from Zoho Accounts'),
 });
 
 // Output schema
@@ -39,8 +40,10 @@ export async function generateSupportTicketResponse(
     const hasDeveloperNotes = input.developerNotes &&
         input.developerNotes !== 'Answer the customer\'s question directly based on your Zoho Analytics knowledge.';
 
+    const responderName = input.responderName || 'Shiva Pranav S';
+
     // Generate response using LLM
-    const prompt = `You are Shiva Pranav S from the Zoho Analytics Support team writing a professional reply to a support ticket.
+    const prompt = `You are ${responderName} from the Zoho Analytics Support team writing a professional reply to a support ticket.
 
 **TICKET REFERENCE**: ${input.communityLink}
 
@@ -139,7 +142,7 @@ Return ONLY this JSON (no markdown, no extra text):
         mainContent,
         userName,
         closingStatement: 'Hope this helps!',
-        responderName: 'Shiva Pranav S',
+        responderName,
     });
 
     return {
