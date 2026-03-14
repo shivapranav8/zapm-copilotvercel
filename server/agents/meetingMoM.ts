@@ -104,7 +104,7 @@ ${input.visualContext ? `\n**Visual Context**:\n${input.visualContext}\n` : ''}
 Generate an extensive JSON report. Focus on capturing technical nuances, specific data points, and verifying BI terminology.
 
 1. **Meeting Title**: Use "${input.meetingTitle || 'Team Meeting'}" unless a clearer title is explicitly stated in the transcript.
-2. **Attendees**: Only include names explicitly mentioned or heard in the transcript. Do NOT guess roles — only add role if explicitly stated (e.g., "I'm the PM here"). Otherwise just use the name.
+2. **Attendees**: List names clearly heard or mentioned in the transcript. Only add a role if explicitly stated (e.g., "I'm the PM here"). Otherwise just the name. If no names audible, return empty array.
 3. **Summary**: Comprehensive 5-8 sentence paragraph capturing the core narrative and business value. Only include facts from the transcript.
 4. **Key Discussions**: DETAILED list. For each point, include 2-3 sentences of context. Quote directly from transcript where possible.
 5. **Decisions Made**: Only decisions explicitly agreed upon in the transcript.
@@ -142,25 +142,18 @@ ${biContext}
 ${transcript}
 ${input.visualContext ? `\n**Visual Context from Screen Sharing/Slides**:\n${input.visualContext}\n` : ''}
 
-**STRICT RULES — no hallucination**:
-- Only include facts that are explicitly stated in the transcript.
-- If something is not mentioned, use "Not mentioned" or "TBD" — never invent it.
-- Do NOT make up due dates. Only use dates explicitly said in the meeting.
-- Do NOT invent attendee roles. Only include roles if the person explicitly stated theirs.
-- Do NOT guess duration. Only include if someone said "this was a 30-min sync" or similar.
-
 **Your Task**:
-1. **Meeting Title**: Use "${input.meetingTitle || 'Team Meeting'}" unless a clearer title is explicitly stated.
-2. **Attendees**: Only names heard/mentioned. No invented roles.
-3. **Summary**: 2-3 sentences covering only what was actually discussed.
-4. **Key Discussions**: Main topics discussed. Only from transcript content.
-5. **Decisions Made**: Only explicit agreements reached in the meeting.
-6. **Action Items**:
-   - Only tasks explicitly mentioned or assigned.
-   - Assignee: named person only, else "Unassigned".
-   - Due date: only if said out loud, else "TBD".
-   - Priority: only from explicit urgency cues, else "Medium".
-7. **Next Meeting**: Only if explicitly scheduled.
+1. **Meeting Title**: Use "${input.meetingTitle || 'Team Meeting'}" unless a clearer title is explicitly stated in the transcript.
+2. **Attendees**: List names that are clearly heard or mentioned in the transcript. Only add a role in brackets if it is explicitly stated by the person (e.g. "I'm the PM"). If no names are audible, return an empty array.
+3. **Summary**: Write 2-3 sentences summarizing what was actually discussed. Always fill this from transcript content — do not leave it empty.
+4. **Key Discussions**: Extract the main topics and talking points from the transcript. Always populate this — even a single topic is fine.
+5. **Decisions Made**: List only decisions or agreements that were clearly reached. If none, return an empty array.
+6. **Action Items**: List only tasks that were explicitly assigned or agreed upon.
+   - Assignee: use the name if mentioned, otherwise "Unassigned".
+   - Due date: only if a date was explicitly mentioned in the meeting. Otherwise use "TBD". Do NOT invent dates.
+   - Priority: infer from urgency words ("urgent", "ASAP", "by EOD") only. Otherwise "Medium".
+7. **Duration**: Only fill if explicitly discussed (e.g. "let's keep this to 30 mins"). Otherwise use "Not mentioned".
+8. **Next Meeting**: Only if explicitly scheduled in the transcript. Otherwise omit the field entirely.
 
 **Output Format**:
 Return ONLY a valid JSON object (no markdown, no code blocks):
