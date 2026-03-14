@@ -527,7 +527,7 @@ zohoMeetingRouter.post('/process', async (req, res) => {
             throw new Error(`Transcript too short (${transcript.trim().length} chars): "${transcript.trim()}" — audio may be silent or corrupted.`);
         }
 
-        send({ status: 'processing', progress: 82, message: `Transcript ready (${transcriptLen} chars). Generating MoM...` });
+        send({ status: 'processing', progress: 82, message: `Transcript ready (${transcriptLen} chars). Generating MoM...`, transcriptPreview: transcript.trim().slice(0, 300) });
 
         send({ status: 'processing', progress: 85, message: 'Generating Minutes of Meeting with GPT-4o...' });
         console.log('🤖 Generating MoM with GPT-4o...');
