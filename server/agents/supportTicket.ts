@@ -1,6 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-import { z } from 'zod';
 import { generateZohoNativeResponse } from '../templates/zohoNativeTemplate';
 import { CommunityResponseData } from '../templates/communityResponseTemplate';
 
@@ -50,43 +49,50 @@ export async function generateSupportTicketResponse(
 ${input.problemStatement || 'No conversation history available.'}
 
 ---
-${hasDeveloperNotes ? `**DEVELOPER / TECHNICAL NOTES** — Use this as your ONLY technical truth.
-- If these notes say a requirement is "vague" or ask for "clarification", your response MUST focus on asking the customer for those details.
-- Do NOT provide a solution if these notes indicate that more information is needed.
-- Do not add, infer, or hallucinate beyond what is written here.
-
+${hasDeveloperNotes ? `**TECHNICAL CONTEXT (DEV NOTES & PRIVATE THREADS)**:
 ${input.developerNotes}
 
-` : ''}**YOUR TASK**: Write a reply that responds SPECIFICALLY to the customer's LATEST message in the conversation above, while strictly following the **DEVELOPER / TECHNICAL NOTES** above.
-- If the developer notes contain a question for the customer or indicate a need for details, ask those questions directly.
-- Do NOT repeat information or workarounds already given in earlier agent replies.
-- If no developer notes are provided, base your reply solely on the conversation history.
+` : ''}**YOUR TASK**: Generate a support reply for **${input.userName}**.
 
-**DELAY**: ${hasDelay ? 'YES — ticket is over 7 days old. You MUST start with "Sorry for the delay in getting back to you."' : 'NO — ticket is recent. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
+**PRIORITY FLOW**:
+1. Use the **TECHNICAL CONTEXT** (Dev Notes or Private Threads) as your PRIMARY source.
+2. If the context is missing, use your internal Zoho Analytics knowledge.
+3. If the context explicitly says the request is "vague" or asks for "clarification", focus on asking for those details. Otherwise, be PROACTIVE and provide solutions.
+4. Address the customer as: **${input.userName}**. Ignore any internal names (e.g., Yogith, Prasanth) in the notes.
+
+**DELAY STATUS**: ${hasDelay ? 'DELAYED (>7 days). Start with "Sorry for the delay in getting back to you."' : 'NOT DELAYED. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
 
 ---
 
-**MANDATORY ZOHO ANALYTICS SUPPORT STYLE GUIDE** (apply to every response):
+**MANDATORY 14-POINT ZOHO ANALYTICS SUPPORT STYLE GUIDE**:
 
-1. START WITH EMPATHY AND CONTEXT — Acknowledge that the customer is blocked on a specific issue. Tailor your acknowledgment to the customer's specific problem.
-   - Example (Delay): "Sorry for the delay in getting back to you. We understand your concern regarding [specific area/problem]."
+1. START WITH EMPATHY AND CONTEXT — Acknowledge that the customer is blocked. Tailor the acknowledgment to their specific issue.
 
-2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA — Mention the affected part (e.g., pivot reports, data sync).
+2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA — Mention the part (e.g., pivot reports, data sync, formula columns, etc.) before suggesting a fix.
 
-3. VALIDATE THE CUSTOMER’S USE CASE — Restate your understanding of the customer's goal. If the requirement is vague (as per developer notes), state that you'd like to understand the use case better.
+3. VALIDATE THE CUSTOMER’S USE CASE — Restate your understanding of what the customer is trying to achieve to avoid incorrect suggestions.
 
-4. ASK FOR REQUIRED DETAILS FIRST — If the **DEVELOPER NOTES** indicate information is missing (vague requirement, missing table name, etc.), your PRIMARY task is to ask for these details. 
-   - CRITICAL: If you are asking for clarification, do NOT provide a multi-step solution. Keep the focus on getting the right information first.
+4. ASK FOR REQUIRED DETAILS WHEN NEEDED — If info is missing (workspace name, screenshots, etc.), ask clearly. ONLY do this if the context implies it's necessary or vague.
 
-5. PROVIDE SOLUTIONS ONLY WHEN CERTAIN — ONLY provide step-by-step solutions if the **DEVELOPER NOTES** contain a concrete answer or if the solution is 100% clear from the context. Otherwise, stick to asking for details.
+5. PROVIDE CLEAR, STEP-BY-STEP SOLUTIONS — Be proactive and structured. Use numbered lists. Keep it simple and avoid long paragraphs.
 
-6. HANDLING FEATURE LIMITATIONS — Acknowledge the limitation and offer a workaround. Never just say it's not possible.
+6. HANDLING FEATURE LIMITATIONS — Acknowledge the limit, explain it, and always offer a workaround. Never just say "no".
 
-7. HANDLING FEATURE REQUESTS — Appreciate the suggestion and confirm it's shared with the product team. Do NOT promise timelines.
+7. HANDLING FEATURE REQUESTS — Appreciate the suggestion, confirm it's shared with the product team, and do NOT promise timelines.
 
-8. MAINTAIN ZOHO TONE — Polite, calm, professional. No internal jargon.
+8. USE SAMPLES, EXAMPLES, AND SCREENSHOTS — Use sample formulas or example query tables whenever possible to help the customer understand.
 
-9. END WITH A CLEAR NEXT STEP — Example: "Please try the above steps..." or "Please share the requested details so we can assist you further."
+9. HANDLE PERFORMANCE OR SYNC ISSUES CAREFULLY — Acknowledge urgency, suggest optimizations, and ask for logs if needed.
+
+10. ROUTING TO THE RIGHT TEAM — Escalate if a backend bug is suspected or sync failures persist. Mention sharing with the technical team.
+
+11. MAINTAIN ZOHO TONE — Polite, calm, professional. Avoid internal jargon like "shard" or "backend job".
+
+12. END WITH A CLEAR NEXT STEP — Guide them on what to do next (e.g., "Please try these steps and let us know").
+
+13. SAFE PHRASES — Use: "Thank you for using Zoho Analytics", "We understand your reporting requirement", "Please let us know if we misunderstood", "We'll be happy to assist further".
+
+14. FINAL CHECKLIST — Confirm feature name accuracy, clear steps, professional tone, and clear follow-up.
 
 ---
 
