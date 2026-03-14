@@ -15,7 +15,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     // The backend function is deployed as /server/node-server/ on Catalyst
     window.location.href = import.meta.env?.DEV
       ? 'http://localhost:5001/api/auth/login'
-      : '/server/node-server/api/auth/login';
+      : '/api/auth/login';
   };
 
   return (

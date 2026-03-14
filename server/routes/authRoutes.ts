@@ -33,12 +33,15 @@ const ZOHO_SCOPE = [
 ].join(',');
 
 function getRedirectUri(req: Request): string {
+    // On Catalyst, the reverse proxy strips /server/node-server before Express sees the URL,
+    // so we can't reconstruct the prefix from req.originalUrl.
+    // Set ZOHO_REDIRECT_URI explicitly in Catalyst env vars to avoid this.
+    if (process.env.ZOHO_REDIRECT_URI) return process.env.ZOHO_REDIRECT_URI;
+
     const host = req.get('host') || 'localhost:5001';
     const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
-    const prefix = req.originalUrl?.startsWith('/server/')
-        ? '/' + req.originalUrl.split('/')[1] + '/' + req.originalUrl.split('/')[2]
-        : '';
-    return `${protocol}://${host}${prefix}/api/auth/callback`;
+
+    return `${protocol}://${host}/api/auth/callback`;
 }
 
 function getFrontendUrl(req: Request): string {
