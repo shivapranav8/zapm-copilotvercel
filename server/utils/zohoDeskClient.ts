@@ -442,7 +442,10 @@ export function buildTicketContext(ticket: ZohoDeskTicket, threads: ZohoDeskThre
     }
 
     const publicThreads = threads.filter(t => !t.isPrivate);
-    const privateThreads = threads.filter(t => t.isPrivate);
+    // Sort private threads by createdTime descending to find the latest
+    const privateThreads = threads
+        .filter(t => t.isPrivate)
+        .sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
 
     if (publicThreads.length > 0) {
         publicLines.push('\nCustomer Conversation:');
@@ -455,11 +458,14 @@ export function buildTicketContext(ticket: ZohoDeskTicket, threads: ZohoDeskThre
         }
     }
 
-    for (const thread of privateThreads) {
-        const strippedContent = thread.content.replace(/<[^>]*>/g, '').trim();
-        if (strippedContent) {
-            internalLines.push(`[${thread.author.name}]: ${strippedContent}`);
-        }
+    if (privateThreads.length > 0) {
+        privateThreads.forEach((thread, index) => {
+            const strippedContent = thread.content.replace(/<[^>]*>/g, '').trim();
+            if (strippedContent) {
+                const label = index === 0 ? ' [LATEST PRIVATE NOTE]' : ' [OLDER PRIVATE NOTE]';
+                internalLines.push(`[${thread.author.name}]${label}: ${strippedContent}`);
+            }
+        });
     }
 
     const publicContext = publicLines.join('\n');

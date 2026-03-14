@@ -55,15 +55,15 @@ ${input.developerNotes}
 GIVEN CONTEXT IS YOUR ONLY SOURCE. DO NOT ADD OR SUGGEST SOLUTIONS NOT MENTIONED HERE.
 ` : '**NO TECHNICAL CONTEXT PROVIDED. USE YOUR INTERNAL ZOHO ANALYTICS KNOWLEDGE.**'}
 
-**SOURCE PRIORITY (FINAL WARNING)**:
-1. **PRIVATE THREADS / SIDEBAR COMMENTS**: If these exist in the TECHNICAL CONTEXT above, they are your **ABSOLUTE AND ONLY** source for technical facts. 
-2. **DEVELOPER NOTES**: If no private threads exist but dev notes are provided, follow them strictly.
-3. **INTERNAL KNOWLEDGE**: Use **ONLY** if the "TECHNICAL CONTEXT" block above says "NO TECHNICAL CONTEXT PROVIDED".
+**SOURCE PRIORITY**:
+1. **[UI DEVELOPER NOTES]**: If this exists in the TECHNICAL CONTEXT, it is your **ABSOLUTE TOP PRIORITY**. It contains recent manual instructions.
+2. **[LATEST PRIVATE NOTE]**: If this exists within the Desk Threads, it is the most recent technical update from an agent. Use this over any older internal notes or workarounds.
+3. **[OLDER PRIVATE NOTE]**: Use for background context only. If a "LATEST" note or "UI" note contradicts an older note, follow the newer one.
+4. **INTERNAL KNOWLEDGE**: Only use for minor details or if all above are missing/incomplete.
 
 **CLARIFICATION VS SOLUTION (CRITICAL)**:
-- If the **TECHNICAL CONTEXT** explicitly states the user query is **"vague"** or instructs you to **"ask for clarification"**, **"follow up"**, or **"get more details"**, you **MUST NOT** provide a technical solution, SQL query, or walkthrough.
-- In such cases, your ONLY task is to acknowledge the user's request with empathy and ask the specific clarifying questions mentioned in the notes.
-- If no specific questions are in the notes, ask the user to provide more context about their specific report, table, or use case.
+- If ANY of the technical notes (UI Notes or the LATEST private note) indicate the query is **"vague"** or explicitly say to **"ask for clarification"**, you **MUST NOT** provide a technical solution or SQL.
+- Otherwise, be proactive and provide a solution based on the latest technical context.
 
 **DELAY STATUS**: ${hasDelay ? 'DELAYED (>7 days). Start with "Sorry for the delay in getting back to you."' : 'NOT DELAYED. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
 
