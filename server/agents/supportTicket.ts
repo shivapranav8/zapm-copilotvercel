@@ -57,11 +57,11 @@ ${input.developerNotes}
 
 ` : ''}**YOUR TASK**: Generate a support reply for **${input.userName}**.
 
-**PRIORITY FLOW**:
-1. Use the **TECHNICAL CONTEXT** (Dev Notes or Private Threads) as your PRIMARY source.
-2. If the context is missing, use your internal Zoho Analytics knowledge.
-3. If the context explicitly says the request is "vague" or asks for "clarification", focus on asking for those details. Otherwise, be PROACTIVE and provide solutions.
-4. Address the customer as: **${input.userName}**. Ignore any internal names (e.g., Yogith, Prasanth) in the notes.
+**SOURCE PRIORITY (FOLLOW STRICTLY)**:
+1. **IN-APP / DEV NOTES**: If these exist, this is your **ONLY** technical source.
+2. **PRIVATE THREADS / COMMENTS**: Use these only if In-app notes are missing.
+3. **INTERNAL KNOWLEDGE**: Use this ONLY as a fallback if the above sources are missing or insufficient.
+- **CRITICAL**: If Technical Context is provided, do NOT add, infer, or hallucinate outside details (like generic table names "A1").
 
 **DELAY STATUS**: ${hasDelay ? 'DELAYED (>7 days). Start with "Sorry for the delay in getting back to you."' : 'NOT DELAYED. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
 
@@ -73,39 +73,40 @@ ${input.developerNotes}
 
 2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA — Mention the part (e.g., pivot reports, data sync, formula columns, etc.) before suggesting a fix.
 
-3. VALIDATE THE CUSTOMER’S USE CASE — Restate your understanding of what the customer is trying to achieve to avoid incorrect suggestions.
+3. VALIDATE THE CUSTOMER’S USE CASE — Restate your understanding of the goal to confirm you are on the same page.
 
-4. ASK FOR REQUIRED DETAILS WHEN NEEDED — If info is missing (workspace name, screenshots, etc.), ask clearly. ONLY do this if the context implies it's necessary or vague.
+4. ASK FOR REQUIRED DETAILS WHEN NEEDED — If info is missing, ask clearly. ONLY do this if the context explicitly says the request is vague.
 
-5. PROVIDE CLEAR, STEP-BY-STEP SOLUTIONS — Be proactive and structured. Use numbered lists. Keep it simple and avoid long paragraphs.
+5. PROVIDE CLEAR, STEP-BY-STEP SOLUTIONS — Be proactive. Use numbered lists.
 
-6. HANDLING FEATURE LIMITATIONS — Acknowledge the limit, explain it, and always offer a workaround. Never just say "no".
+6. HANDLING FEATURE LIMITATIONS — Acknowledge the limit and offer a workaround. Never just say "no".
 
-7. HANDLING FEATURE REQUESTS — Appreciate the suggestion, confirm it's shared with the product team, and do NOT promise timelines.
+7. HANDLING FEATURE REQUESTS — Appreciate the suggestion and share with the product team. No timelines.
 
-8. USE SAMPLES, EXAMPLES, AND SCREENSHOTS — Use sample formulas or example query tables whenever possible to help the customer understand.
+8. USE SAMPLES, EXAMPLES, AND SCREENSHOTS — Use sample formulas or example query tables. **Format SQL queries with clear line breaks using <br>.**
 
-9. HANDLE PERFORMANCE OR SYNC ISSUES CAREFULLY — Acknowledge urgency, suggest optimizations, and ask for logs if needed.
+9. HANDLE PERFORMANCE OR SYNC ISSUES CAREFULLY — Suggest optimizations and ask for logs if needed.
 
-10. ROUTING TO THE RIGHT TEAM — Escalate if a backend bug is suspected or sync failures persist. Mention sharing with the technical team.
+10. ROUTING TO THE RIGHT TEAM — Escalate if a backend bug is suspected.
 
-11. MAINTAIN ZOHO TONE — Polite, calm, professional. Avoid internal jargon like "shard" or "backend job".
+11. MAINTAIN ZOHO TONE — Polite, calm, professional. Avoid jargon.
 
-12. END WITH A CLEAR NEXT STEP — Guide them on what to do next (e.g., "Please try these steps and let us know").
+12. END WITH A CLEAR NEXT STEP — Guide them on what to do next.
 
-13. SAFE PHRASES — Use: "Thank you for using Zoho Analytics", "We understand your reporting requirement", "Please let us know if we misunderstood", "We'll be happy to assist further".
+13. SAFE PHRASES — Use: "Thank you for using Zoho Analytics", "We'll be happy to assist further", etc.
 
-14. FINAL CHECKLIST — Confirm feature name accuracy, clear steps, professional tone, and clear follow-up.
+14. FINAL CHECKLIST — Confirm feature name accuracy and professional tone.
 
 ---
 
-**HTML FORMAT RULES**:
-- The template auto-adds: greeting "Hello [userName]," · closing "Hope this helps!" · signature. Do NOT include these.
-- Use <br><br> between paragraphs.
-- Bold ONLY feature names and dates with <strong>. Do NOT bold structural phrases like "Please be informed" or "From your message".
-- Acknowledgment + area identification + solution/question in 1–3 short paragraphs. Then one closing next-step sentence.
+**HTML FORMAT & BOLDING RULES**:
+- **BOLDING**: You **MUST** wrap all **Zoho Analytics** feature names (e.g., **<strong>Query Table</strong>**, **<strong>Pivot View</strong>**, **<strong>Formula Column</strong>**), product names, table names, and specific dates in **<strong>** tags. This is non-negotiable for readability.
+- **SQL/CODE**: Format SQL queries with clear line breaks using <br> and indenting. Bold SQL keywords for clarity.
+- Example SQL: <strong>SELECT</strong> * <br><strong>FROM</strong> [Table]<br><strong>WHERE</strong> [Condition]
+- Separate paragraphs with <br><br>.
+- The template auto-adds greeting and signature.
 
-Return ONLY this JSON (no markdown, no extra text):
+Return **ONLY** a valid JSON object. Do **NOT** include any preamble, markdown formatting (like \`\`\`json), or signature.
 {"mainContent": "[your HTML body content]", "userName": "[customer name from context, or 'there']"}
 `;
 
@@ -114,16 +115,22 @@ Return ONLY this JSON (no markdown, no extra text):
     let userName = 'there';
 
     try {
-        const content = response.content as string;
-        // Find the JSON block if the model included markdown formatting
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        const jsonStr = jsonMatch ? jsonMatch[0] : content;
-        const parsed = JSON.parse(jsonStr);
-        mainContent = parsed.mainContent || content;
-        userName = parsed.userName || input.userName || 'there';
+        const content = (response.content as string).trim();
+        // Extract JSON using a more aggressive regex or just the whole content
+        const firstBrace = content.indexOf('{');
+        const lastBrace = content.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            const jsonStr = content.substring(firstBrace, lastBrace + 1);
+            const parsed = JSON.parse(jsonStr);
+            mainContent = parsed.mainContent || content;
+            userName = parsed.userName || input.userName || 'there';
+        } else {
+            throw new Error('No JSON braces found');
+        }
     } catch (e) {
-        console.error('Failed to parse AI response as JSON, using raw content');
-        mainContent = response.content as string;
+        console.error('Failed to parse AI response as JSON, falling back to raw content clean-up');
+        mainContent = (response.content as string).replace(/```json|```/g, '').trim();
     }
 
     // POST-PROCESSING: Inject delay apology if flag is set
