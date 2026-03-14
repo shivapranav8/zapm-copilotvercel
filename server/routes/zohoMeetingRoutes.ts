@@ -472,22 +472,41 @@ zohoMeetingRouter.post('/process', async (req, res) => {
 
         let transcript = '';
 
-        const dlResponse = await meetingFetch(finalDownloadUrl, {}, token);
-        console.log(`📡 Download HTTP status: ${dlResponse.status}`);
+        // Try plain fetch first (Zoho download URLs are often pre-signed — no auth header needed)
+        let dlResponse = await fetch(finalDownloadUrl);
+        // If pre-signed URL fails, fall back to authenticated request
+        if (!dlResponse.ok) {
+            console.log(`⚠️  Plain fetch failed (${dlResponse.status}), retrying with auth token...`);
+            dlResponse = await meetingFetch(finalDownloadUrl, {}, token);
+        }
+        console.log(`📡 Download HTTP status: ${dlResponse.status}, Content-Type: ${dlResponse.headers.get('content-type')}`);
         if (!dlResponse.ok) {
             throw new Error(`Download failed (HTTP ${dlResponse.status}). Re-login after adding new scopes.`);
         }
+
+        const contentType = dlResponse.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) {
+            throw new Error('Download URL returned an HTML page instead of a video — the link may have expired. Please retry.');
+        }
+
         const buffer = await dlResponse.arrayBuffer();
         fs.writeFileSync(tmpFile, Buffer.from(buffer));
         const sizeMB = (buffer.byteLength / 1024 / 1024).toFixed(2);
         console.log(`✅ Downloaded: ${sizeMB} MB`);
 
+        if (buffer.byteLength < 10000) {
+            throw new Error(`Downloaded file is too small (${sizeMB} MB) — likely not a real video file. The URL may have expired.`);
+        }
+
         send({ status: 'processing', progress: 35, message: `Downloaded (${sizeMB} MB). Extracting audio...` });
+        console.log('🎵 Extracting audio with ffmpeg...');
+
         send({ status: 'processing', progress: 45, message: 'Transcribing audio with Whisper...' });
         console.log('🎙️  Transcribing with Whisper...');
 
         const result = await transcribeVideo(tmpFile);
         transcript = result.transcript;
+        console.log(`📝 Transcript length: ${transcript?.length ?? 0} chars`);
         try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
         try { if (result.audioPath) fs.unlinkSync(result.audioPath); } catch { /* ignore */ }
 
