@@ -205,7 +205,7 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
     const successCount = output.filter((r) => r.success).length;
     console.log(`✅ [Zoho Desk] Bulk generation complete: ${successCount}/${ticketIds.length} succeeded`);
 
-    res.json({ results: output, successCount, totalCount: ticketIds.length });
+    res.json({ results: output, successCount, totalCount: ticketIds.length, v: '1.0.2-refine-priority' });
 });
 
 /**
