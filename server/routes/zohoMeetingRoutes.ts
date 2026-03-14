@@ -472,13 +472,8 @@ zohoMeetingRouter.post('/process', async (req, res) => {
 
         let transcript = '';
 
-        // Try plain fetch first (Zoho download URLs are often pre-signed — no auth header needed)
-        let dlResponse = await fetch(finalDownloadUrl);
-        // If pre-signed URL fails, fall back to authenticated request
-        if (!dlResponse.ok) {
-            console.log(`⚠️  Plain fetch failed (${dlResponse.status}), retrying with auth token...`);
-            dlResponse = await meetingFetch(finalDownloadUrl, {}, token);
-        }
+        // Use authenticated fetch — Zoho recording downloads require the OAuth token
+        const dlResponse = await meetingFetch(finalDownloadUrl, {}, token);
         console.log(`📡 Download HTTP status: ${dlResponse.status}, Content-Type: ${dlResponse.headers.get('content-type')}`);
         if (!dlResponse.ok) {
             throw new Error(`Download failed (HTTP ${dlResponse.status}). Re-login after adding new scopes.`);
