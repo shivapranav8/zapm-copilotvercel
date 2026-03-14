@@ -506,24 +506,28 @@ zohoMeetingRouter.post('/process', async (req, res) => {
 
         const result = await transcribeVideo(tmpFile);
         transcript = result.transcript;
-        console.log(`📝 Transcript length: ${transcript?.length ?? 0} chars`);
+        const transcriptLen = transcript?.trim().length ?? 0;
+        console.log(`📝 Transcript length: ${transcriptLen} chars`);
+        console.log(`📝 Transcript preview: ${transcript?.slice(0, 300)}`);
         try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
         try { if (result.audioPath) fs.unlinkSync(result.audioPath); } catch { /* ignore */ }
 
         // Fallback to Zoho transcript
-        if (!transcript && transcriptUrl) {
-            send({ status: 'processing', progress: 80, message: 'Using Zoho transcript as fallback...' });
+        if (!transcript?.trim() && transcriptUrl) {
+            send({ status: 'processing', progress: 80, message: 'Whisper returned empty — trying Zoho transcript fallback...' });
             const txtRes = await fetch(transcriptUrl);
             if (txtRes.ok) transcript = await txtRes.text();
+            console.log(`📝 Zoho fallback transcript length: ${transcript?.trim().length ?? 0} chars`);
         }
 
-        if (!transcript) {
-            throw new Error('Could not get transcript. Re-login with new scopes and try again.');
+        if (!transcript?.trim()) {
+            throw new Error('Whisper returned an empty transcript. The audio may be silent or the video has no speech track.');
         }
         if (transcript.trim().length < 100) {
-            throw new Error(`Transcript too short (${transcript.trim().length} chars) — audio may be silent, corrupted, or the recording has no speech.`);
+            throw new Error(`Transcript too short (${transcript.trim().length} chars): "${transcript.trim()}" — audio may be silent or corrupted.`);
         }
-        send({ status: 'processing', progress: 82, message: `Transcript ready (${transcript.length} chars). Generating MoM...` });
+
+        send({ status: 'processing', progress: 82, message: `Transcript ready (${transcriptLen} chars). Generating MoM...` });
 
         send({ status: 'processing', progress: 85, message: 'Generating Minutes of Meeting with GPT-4o...' });
         console.log('🤖 Generating MoM with GPT-4o...');

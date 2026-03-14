@@ -70,6 +70,11 @@ export async function generateMeetingMoM(
 
     const transcript = input.transcript;
     console.log('📄 Transcript length:', transcript.length, 'characters');
+    console.log('📄 Transcript preview:', transcript.slice(0, 300));
+
+    if (transcript.trim().length < 200) {
+        throw new Error(`Transcript too short to generate meaningful MoM (${transcript.trim().length} chars). The recording may be silent or the audio extraction failed.`);
+    }
 
     if (input.visualContext) {
         console.log('👁️  Visual context available:', input.visualContext.length, 'characters');
