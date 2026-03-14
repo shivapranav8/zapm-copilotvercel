@@ -64,10 +64,9 @@ async function transcribeLargeAudio(audioFilePath: string): Promise<string> {
             // Transcribe each chunk
             // Note: We call the API directly here to update progress
             const audioStream = fs.createReadStream(chunkPath);
-            const response = await getOpenAI().audio.transcriptions.create({
+            const response = await getOpenAI().audio.translations.create({
                 file: audioStream,
                 model: 'whisper-1',
-                // No language param — auto-detects Tanglish
                 response_format: 'text',
             });
 
@@ -116,11 +115,10 @@ export async function transcribeAudio(audioFilePath: string): Promise<string> {
         // Create a read stream from the audio file
         const audioStream = fs.createReadStream(audioFilePath);
 
-        // Call OpenAI Whisper API
-        const transcription = await getOpenAI().audio.transcriptions.create({
+        // Use translations endpoint — auto-detects Tamil/Tanglish and outputs English
+        const transcription = await getOpenAI().audio.translations.create({
             file: audioStream,
             model: 'whisper-1',
-            // No language param — auto-detects Tamil/English (Tanglish) code-switching
             response_format: 'text',
         });
 
