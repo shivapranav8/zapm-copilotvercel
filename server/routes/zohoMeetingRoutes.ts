@@ -501,6 +501,10 @@ zohoMeetingRouter.post('/process', async (req, res) => {
         if (!transcript) {
             throw new Error('Could not get transcript. Re-login with new scopes and try again.');
         }
+        if (transcript.trim().length < 100) {
+            throw new Error(`Transcript too short (${transcript.trim().length} chars) — audio may be silent, corrupted, or the recording has no speech.`);
+        }
+        send({ status: 'processing', progress: 82, message: `Transcript ready (${transcript.length} chars). Generating MoM...` });
 
         send({ status: 'processing', progress: 85, message: 'Generating Minutes of Meeting with GPT-4o...' });
         console.log('🤖 Generating MoM with GPT-4o...');

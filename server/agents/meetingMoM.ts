@@ -76,74 +76,99 @@ export async function generateMeetingMoM(
     }
 
 
+    const biContext = `
+**Domain Context**:
+These meetings are Business Intelligence / Data Analytics discussions. You will encounter these terms — interpret them correctly:
+- KPI (Key Performance Indicator), DAU/MAU (Daily/Monthly Active Users), WAU (Weekly Active Users)
+- Churn, Retention, Cohort, Funnel, Conversion Rate, LTV (Lifetime Value), ARR/MRR
+- ETL / ELT (Extract Transform Load), Data Pipeline, Data Warehouse, Data Lake, Data Mart
+- PII (Personally Identifiable Information), GDPR, Data Masking, Anonymization
+- SQL, BigQuery, Snowflake, Redshift, dbt, Tableau, Power BI, Looker, Metabase
+- NPS (Net Promoter Score), CSAT, Session, Engagement, Bounce Rate, Stickiness
+- Dimension, Fact Table, Star Schema, Slowly Changing Dimension (SCD)
+- Sprint, Backlog, Epic, Story Points, Velocity (Agile/Scrum terms may appear)
+If an acronym appears that is NOT in this list, mark it as "Needs Review".
+
+**Language Note**:
+The transcript may be in Tanglish (Tamil + English code-switching). Tamil words or phrases may appear transliterated in English (e.g., "seri", "enna", "panrom", "pakkalaam"). Treat them as conversational filler and focus on the English technical content. Do not translate Tamil words — just skip them when extracting facts.
+`;
+
     const systemPrompt = input.detailed ?
         `You are an expert BI (Business Intelligence) Technical Writer and Meeting Analyst. Analyze the meeting transcript${input.visualContext ? ' and visual context' : ''} to generate a DEEP DIVE, HIGH-FIDELITY meeting record.
-
+${biContext}
 **Meeting Transcript**:
 ${transcript}
 ${input.visualContext ? `\n**Visual Context**:\n${input.visualContext}\n` : ''}
 
 **Your Task**:
-Generate an extensive JSON report. Focus on capturing technical nuances, specific data points, and verifying BI terminology (e.g., PII, ETL, KPI, etc.).
+Generate an extensive JSON report. Focus on capturing technical nuances, specific data points, and verifying BI terminology.
 
-1. **Meeting Title**: Specific and descriptive.
-2. **Attendees**: Full list with inferred roles.
-3. **Summary**: Comprehensive 5-8 sentence paragraph capturing the core narrative and business value.
-4. **Key Discussions**: DETAILED list. For each point, include 2-3 sentences of context. Quote heavily.
-5. **Decisions Made**: Precise decisions.
-6. **Action Items**: Detailed tasks. Use strict timestamps if inferable.
+1. **Meeting Title**: Use "${input.meetingTitle || 'Team Meeting'}" unless a clearer title is explicitly stated in the transcript.
+2. **Attendees**: Only include names explicitly mentioned or heard in the transcript. Do NOT guess roles — only add role if explicitly stated (e.g., "I'm the PM here"). Otherwise just use the name.
+3. **Summary**: Comprehensive 5-8 sentence paragraph capturing the core narrative and business value. Only include facts from the transcript.
+4. **Key Discussions**: DETAILED list. For each point, include 2-3 sentences of context. Quote directly from transcript where possible.
+5. **Decisions Made**: Only decisions explicitly agreed upon in the transcript.
+6. **Action Items**: Only tasks explicitly assigned in the transcript.
+   - Assignee: only if explicitly named. Use "Unassigned" otherwise.
+   - Due date: only if explicitly mentioned. Use "TBD" otherwise. Do NOT invent dates.
+   - Priority: infer from urgency words ("urgent", "ASAP", "by EOD", "next sprint") only.
 7. **Term Validation** (CRITICAL):
-   - Identify ALL acronyms, technical parameters, and BI-specific jargon (e.g., "PAU", "MAU", "Churn", "Cohort").
-   - Define them based on context.
-   - If a term is ambiguous or used loosely, mark status as "Needs Review". If standard/clear, "Verified".
+   - Identify ALL acronyms and BI-specific jargon used.
+   - Define them using the domain context above.
+   - If ambiguous or unknown, mark as "Needs Review". If standard, "Verified".
 
 **Output Format**:
 Return ONLY valid JSON:
 {
   "meetingTitle": "string",
   "date": "Month DD, YYYY",
-  "duration": "string",
-  "attendees": ["string"],
+  "duration": "string (only if mentioned, otherwise 'Not mentioned')",
+  "attendees": ["Name" or "Name (Role if explicitly stated)"],
   "summary": "string",
   "keyDiscussions": ["string"],
   "decisions": ["string"],
-  "actionItems": [{ "id": "1", "task": "string", "assignee": "Name", "dueDate": "Date", "priority": "High|Medium|Low", "status": "Pending" }],
-  "nextMeeting": "string",
+  "actionItems": [{ "id": "1", "task": "string", "assignee": "Name or Unassigned", "dueDate": "Date or TBD", "priority": "High|Medium|Low", "status": "Pending" }],
+  "nextMeeting": "string or omit if not mentioned",
   "termDefinitions": [
-    { "term": "PII", "definition": "Personally Identifiable Information - Context: discussed regarding masking in export", "status": "Verified" },
+    { "term": "MAU", "definition": "Monthly Active Users", "status": "Verified" },
     { "term": "PAU", "definition": "Unknown acronym used in context of user stats", "status": "Needs Review" }
   ]
 }
 `
         :
-        `You are an expert meeting minutes assistant. Analyze the meeting transcript${input.visualContext ? ' and visual context from screen sharing' : ''} and generate comprehensive, structured meeting minutes.
-
+        `You are an expert meeting minutes assistant specializing in Business Intelligence and Data Analytics teams. Analyze the meeting transcript${input.visualContext ? ' and visual context from screen sharing' : ''} and generate accurate, grounded meeting minutes.
+${biContext}
 **Meeting Transcript**:
 ${transcript}
 ${input.visualContext ? `\n**Visual Context from Screen Sharing/Slides**:\n${input.visualContext}\n` : ''}
 
-**Your Task**:
-Generate structured meeting minutes with the following information:
+**STRICT RULES — no hallucination**:
+- Only include facts that are explicitly stated in the transcript.
+- If something is not mentioned, use "Not mentioned" or "TBD" — never invent it.
+- Do NOT make up due dates. Only use dates explicitly said in the meeting.
+- Do NOT invent attendee roles. Only include roles if the person explicitly stated theirs.
+- Do NOT guess duration. Only include if someone said "this was a 30-min sync" or similar.
 
-1. **Meeting Title**: Infer from the transcript or use "${input.meetingTitle || 'Team Meeting'}"
-2. **Attendees**: List all participants mentioned (with roles if mentioned, e.g., "Sarah Chen (PM)")
-3. **Summary**: 2-3 sentence overview of the meeting${input.visualContext ? ' (incorporate visual information if relevant)' : ''}
-4. **Key Discussions**: Main topics discussed (bullet points)${input.visualContext ? ' - include information from slides/diagrams if shown' : ''}
-5. **Decisions Made**: Clear decisions that were agreed upon
-6. **Action Items**: Tasks with assignees, due dates, and priorities
-   - Extract owner/assignee from transcript
-   - Infer reasonable due dates (within next 1-2 weeks)
-   - Assign priority based on urgency mentioned (High/Medium/Low)
-   - Default status to "Pending" unless mentioned as in-progress
-7. **Next Meeting**: If mentioned, include date/time
+**Your Task**:
+1. **Meeting Title**: Use "${input.meetingTitle || 'Team Meeting'}" unless a clearer title is explicitly stated.
+2. **Attendees**: Only names heard/mentioned. No invented roles.
+3. **Summary**: 2-3 sentences covering only what was actually discussed.
+4. **Key Discussions**: Main topics discussed. Only from transcript content.
+5. **Decisions Made**: Only explicit agreements reached in the meeting.
+6. **Action Items**:
+   - Only tasks explicitly mentioned or assigned.
+   - Assignee: named person only, else "Unassigned".
+   - Due date: only if said out loud, else "TBD".
+   - Priority: only from explicit urgency cues, else "Medium".
+7. **Next Meeting**: Only if explicitly scheduled.
 
 **Output Format**:
-Return ONLY a valid JSON object (no markdown, no code blocks) with this exact structure:
+Return ONLY a valid JSON object (no markdown, no code blocks):
 {
   "meetingTitle": "string",
   "date": "Month DD, YYYY",
-  "duration": "Xh XXmin",
-  "attendees": ["Name (Role)", ...],
+  "duration": "string or 'Not mentioned'",
+  "attendees": ["Name" or "Name (Role if explicitly stated)"],
   "summary": "string",
   "keyDiscussions": ["string", ...],
   "decisions": ["string", ...],
@@ -151,23 +176,23 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with this exact st
     {
       "id": "1",
       "task": "string",
-      "assignee": "Name",
-      "dueDate": "Mon DD, YYYY",
+      "assignee": "Name or Unassigned",
+      "dueDate": "Mon DD, YYYY or TBD",
       "priority": "High|Medium|Low",
       "status": "Pending|In Progress|Completed"
     }
   ],
-  "nextMeeting": "Day, Month DD, YYYY at HH:MM AM/PM - Topic" (optional)
+  "nextMeeting": "Day, Month DD, YYYY at HH:MM AM/PM - Topic (omit field if not mentioned)"
 }
 `;
 
     const prompt = `${systemPrompt}
 
 **Important**:
-- Use today's date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-- Estimate duration based on transcript length (short: 30min, medium: 1h, long: 1h 30min+)
+- Use today's date for the "date" field: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+- Duration: only fill if explicitly discussed in the meeting, otherwise use "Not mentioned"
 - Assign sequential IDs to action items ("1", "2", "3", ...)
-- Be specific and actionable in action items
+- If the transcript is unclear or in Tanglish, focus on the English technical content
 ${input.visualContext ? '- Incorporate information from slides, diagrams, or screen shares when relevant\n' : ''}- Return ONLY the JSON object, no other text
 `;
 

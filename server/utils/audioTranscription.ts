@@ -67,7 +67,7 @@ async function transcribeLargeAudio(audioFilePath: string): Promise<string> {
             const response = await getOpenAI().audio.transcriptions.create({
                 file: audioStream,
                 model: 'whisper-1',
-                language: 'en',
+                // No language param — auto-detects Tanglish
                 response_format: 'text',
             });
 
@@ -120,9 +120,8 @@ export async function transcribeAudio(audioFilePath: string): Promise<string> {
         const transcription = await getOpenAI().audio.transcriptions.create({
             file: audioStream,
             model: 'whisper-1',
-            language: 'en', // Set to English but Whisper auto-detects mixed languages
+            // No language param — auto-detects Tamil/English (Tanglish) code-switching
             response_format: 'text',
-            // Whisper automatically handles code-mixed languages like Tanglish
         });
 
         console.log('✅ Transcription completed');
