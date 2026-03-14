@@ -15,6 +15,7 @@ export function CommunityTicketPage({ onBack, onSubmit, ticketData }: CommunityT
   const [showInput, setShowInput] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<ZohoDeskTicket | null>(null);
   const [generatedAnswer, setGeneratedAnswer] = useState<string>('');
+  const [draftContent, setDraftContent] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingTickets, setIsLoadingTickets] = useState(false);
   const [isFetched, setIsFetched] = useState(false);
@@ -98,6 +99,7 @@ export function CommunityTicketPage({ onBack, onSubmit, ticketData }: CommunityT
       const result = data.results?.[0];
       if (!result?.success) throw new Error(result?.error || 'Generation failed');
       setGeneratedAnswer(result.generatedResponse);
+      setDraftContent(result.draftContent || result.generatedResponse);
       toast.success('Response generated!');
     } catch (err: any) {
       toast.error(`Failed to generate: ${err.message}`);
@@ -268,7 +270,7 @@ export function CommunityTicketPage({ onBack, onSubmit, ticketData }: CommunityT
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ content: generatedAnswer }),
+                    body: JSON.stringify({ content: draftContent }),
                   });
                   if (!res.ok) throw new Error((await res.json()).details || 'Draft save failed');
                   toast.success('Draft saved in Zoho Desk! (not sent to customer)');

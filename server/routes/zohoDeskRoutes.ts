@@ -188,6 +188,7 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
                 ageInDays: ticket.ageInDays,
                 webUrl: ticket.webUrl,
                 generatedResponse: generated.response,
+                draftContent: generated.draftContent,
                 userName: generated.userName,
             };
         })

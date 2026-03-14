@@ -16,7 +16,8 @@ const SupportTicketInputSchema = z.object({
 
 // Output schema
 const SupportTicketOutputSchema = z.object({
-    response: z.string().describe('Generated support response in HTML format'),
+    response: z.string().describe('Generated support response in HTML format (full template for preview)'),
+    draftContent: z.string().describe('Simplified HTML for saving to Zoho Desk draft (no template wrapper)'),
     userName: z.string().optional().describe('Extracted user name from context'),
 });
 
@@ -136,7 +137,7 @@ Return **ONLY** a valid JSON object. No markdown preamble, no closing signature.
         }
     }
 
-    // Generate final native HTML response
+    // Generate final native HTML response (full template — for app preview only)
     const finalHtml = generateZohoNativeResponse({
         mainContent,
         userName,
@@ -144,8 +145,17 @@ Return **ONLY** a valid JSON object. No markdown preamble, no closing signature.
         responderName,
     });
 
+    // Simple draft content — what actually gets saved to Zoho Desk
+    const draftContent = `<div style="font-family: Arial, sans-serif; font-size: 13px;">
+<p>Hello ${userName},</p>
+${mainContent}
+<p>Hope this helps!</p>
+<p>Regards,<br>${responderName}<br>Zoho Analytics Support</p>
+</div>`;
+
     return {
         response: finalHtml,
+        draftContent,
         userName,
     };
 }

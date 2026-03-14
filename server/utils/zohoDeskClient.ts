@@ -417,6 +417,7 @@ export interface TicketContext {
  */
 export async function saveTicketDraft(ticketId: string, content: string, token: string): Promise<{ draftId: string }> {
     const url = `${ZOHO_DESK_BASE_URL}/tickets/${ticketId}/draftReply`;
+
     const res = await fetchDesk(url, {
         method: 'POST',
         headers: getHeaders(token),
