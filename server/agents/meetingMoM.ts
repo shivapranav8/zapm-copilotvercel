@@ -210,6 +210,12 @@ ${input.visualContext ? '- Incorporate information from slides, diagrams, or scr
 
         const parsed = JSON.parse(cleanContent);
 
+        // Validate shape — log warnings but don't block on minor mismatches
+        const validation = MeetingMoMOutputSchema.safeParse(parsed);
+        if (!validation.success) {
+            console.warn('⚠️  MoM response has schema mismatches:', JSON.stringify(validation.error.flatten()));
+        }
+
         console.log('✅ Generated MoM successfully');
         console.log(`📊 Found ${parsed.decisions?.length || 0} decisions`);
         console.log(`📋 Found ${parsed.actionItems?.length || 0} action items`);

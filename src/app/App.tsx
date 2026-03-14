@@ -100,14 +100,15 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) throw new Error('Invalid history format');
         // Convert timestamp strings back to Date objects
         const sessions = parsed.map((s: any) => ({
           ...s,
           timestamp: new Date(s.timestamp),
-          messages: s.messages.map((m: any) => ({
+          messages: Array.isArray(s.messages) ? s.messages.map((m: any) => ({
             ...m,
             timestamp: new Date(m.timestamp),
-          })),
+          })) : [],
         }));
         setChatHistory(sessions);
       } catch (error) {
@@ -147,7 +148,7 @@ export default function App() {
 
     // Add user message
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: `New feature: ${data.featureName} in ${data.domain} domain.`,
       timestamp: new Date(),
@@ -723,9 +724,11 @@ They can review and provide feedback directly in Cliq!`,
           const decoder = new TextDecoder();
           let buffer = '';
 
+          const fail = (err: unknown) => { reader.cancel(); reject(err); };
+
           function pump() {
             reader.read().then(({ done, value }) => {
-              if (done) { reject(new Error('Stream ended unexpectedly')); return; }
+              if (done) { fail(new Error('Stream ended unexpectedly')); return; }
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
@@ -736,11 +739,11 @@ They can review and provide feedback directly in Cliq!`,
                   setMeetingMoMProgress(event.progress ?? 0);
                   setMeetingMoMMessage(event.message ?? '');
                   if (event.status === 'done') { resolve(event.result); return; }
-                  if (event.status === 'error') { reject(new Error(event.message || 'Processing failed')); return; }
+                  if (event.status === 'error') { fail(new Error(event.message || 'Processing failed')); return; }
                 } catch { /* ignore malformed line */ }
               }
               pump();
-            }).catch(reject);
+            }).catch(fail);
           }
           pump();
         });

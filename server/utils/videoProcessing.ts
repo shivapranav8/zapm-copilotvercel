@@ -40,6 +40,7 @@ export async function extractAudioFromVideo(videoPath: string): Promise<string> 
                 });
                 if (audioStreams.length === 0) {
                     console.error('❌ No audio streams found in video file!');
+                    return reject(new Error('No audio streams found in video file. The recording may be video-only with no audio track.'));
                 }
             }
 

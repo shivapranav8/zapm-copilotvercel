@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import OpenAI from 'openai';
 import path from 'path';
 import chunk from 'lodash/chunk';
@@ -116,11 +117,16 @@ export async function transcribeAudio(audioFilePath: string): Promise<string> {
         const audioStream = fs.createReadStream(audioFilePath);
 
         // Use translations endpoint — auto-detects Tamil/Tanglish and outputs English
-        const transcription = await getOpenAI().audio.translations.create({
-            file: audioStream,
-            model: 'whisper-1',
-            response_format: 'text',
-        });
+        let transcription: string;
+        try {
+            transcription = await getOpenAI().audio.translations.create({
+                file: audioStream,
+                model: 'whisper-1',
+                response_format: 'text',
+            }) as string;
+        } finally {
+            audioStream.destroy();
+        }
 
         console.log('✅ Transcription completed');
         console.log(`📝 Transcript length: ${transcription.length} characters`);
@@ -171,7 +177,7 @@ export async function transcribeAudioFromUrl(audioUrl: string): Promise<string> 
         const buffer = Buffer.from(arrayBuffer);
 
         // Save temporarily
-        const tempFilePath = `/tmp/meeting_audio_${Date.now()}.mp3`;
+        const tempFilePath = path.join(os.tmpdir(), `meeting_audio_${Date.now()}.mp3`);
         fs.writeFileSync(tempFilePath, buffer);
 
         console.log(`✅ Audio downloaded to: ${tempFilePath}`);

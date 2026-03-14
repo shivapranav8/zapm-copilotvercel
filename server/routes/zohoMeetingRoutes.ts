@@ -386,9 +386,6 @@ zohoMeetingRouter.get('/recordings', async (req, res) => {
                 error: 'Failed to fetch recordings from Zoho Meeting',
                 details: `All ${triedEndpoints.length} endpoints failed. Last error: ${lastError}`,
                 hint: 'Run GET /api/zoho-meeting/debug to see raw API responses and diagnose the issue.',
-                zsoid,
-                userKey,
-                triedEndpoints,
             });
         }
 
@@ -467,6 +464,17 @@ zohoMeetingRouter.post('/process', async (req, res) => {
             throw new Error('Could not determine download URL for this recording.');
         }
 
+        // SSRF guard — only allow Zoho-owned hostnames
+        try {
+            const { hostname } = new URL(finalDownloadUrl);
+            if (!hostname.endsWith('.zoho.com') && !hostname.endsWith('.zoho.in') && !hostname.endsWith('.zohocorp.com')) {
+                throw new Error(`Blocked download from untrusted host: ${hostname}`);
+            }
+        } catch (urlErr) {
+            if (urlErr instanceof Error && urlErr.message.startsWith('Blocked')) throw urlErr;
+            throw new Error('Invalid download URL format.');
+        }
+
         send({ status: 'processing', progress: 15, message: 'Downloading recording...' });
         console.log(`\n📝 [${jobId}] Processing: "${meetingTitle || recordingKey}"`);
 
@@ -513,10 +521,10 @@ zohoMeetingRouter.post('/process', async (req, res) => {
         try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
         try { if (result.audioPath) fs.unlinkSync(result.audioPath); } catch { /* ignore */ }
 
-        // Fallback to Zoho transcript
+        // Fallback to Zoho transcript (authenticated — same token required)
         if (!transcript?.trim() && transcriptUrl) {
             send({ status: 'processing', progress: 80, message: 'Whisper returned empty — trying Zoho transcript fallback...' });
-            const txtRes = await fetch(transcriptUrl);
+            const txtRes = await meetingFetch(transcriptUrl, {}, token);
             if (txtRes.ok) transcript = await txtRes.text();
             console.log(`📝 Zoho fallback transcript length: ${transcript?.trim().length ?? 0} chars`);
         }
