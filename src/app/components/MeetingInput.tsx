@@ -155,12 +155,12 @@ export function MeetingInput({ onSubmit, onClose }: MeetingInputProps) {
                   <div className={`font-medium ${inputType === 'link' ? 'text-blue-600' : 'text-gray-700'}`}>
                     Meeting Link
                   </div>
-                  <div className="text-xs text-gray-500">Zoom, Teams, Meet, etc.</div>
+                  <div className="text-xs text-gray-500">Zoho Meeting link</div>
                 </div>
               </div>
             </button>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setInputType('video')}
               className={`flex-1 p-4 border-2 rounded-lg transition-all ${inputType === 'video'
@@ -177,7 +177,7 @@ export function MeetingInput({ onSubmit, onClose }: MeetingInputProps) {
                   <div className="text-xs text-gray-500">MP4, MOV, AVI, etc.</div>
                 </div>
               </div>
-            </button>
+            </button> */}
 
             <button
               type="button"
@@ -210,11 +210,11 @@ export function MeetingInput({ onSubmit, onClose }: MeetingInputProps) {
               type="url"
               value={meetingLink}
               onChange={(e) => setMeetingLink(e.target.value)}
-              placeholder="https://zoom.us/j/123456789 or https://teams.microsoft.com/..."
+              placeholder="https://meeting.zoho.in/meeting/..."
               className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Supported: Zoom, Microsoft Teams, Google Meet, Webex
+              Paste your Zoho Meeting link here
             </p>
           </div>
         )}
