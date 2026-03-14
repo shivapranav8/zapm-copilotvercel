@@ -146,10 +146,12 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
             // Determine if delay apology is needed (ticket > 7 days old)
             const includeDelayApology = (ticket.ageInDays ?? 0) > 7;
 
-            // Priority: UI dev notes → (internal sidebar comments + private thread notes) → empty
+            // Priority: UI dev notes → internal agent comments → empty (AI uses conversation history)
             const solution = developerNotes?.trim()
                 ? developerNotes
-                : [comments.trim(), ctx.internalNotes.trim()].filter(Boolean).join('\n---\n');
+                : comments.trim()
+                    ? comments
+                    : '';
 
             const generated = await generateSupportTicketResponse({
                 communityLink: ticket.webUrl || `Zoho Desk Ticket #${ticket.ticketNumber}`,
@@ -167,6 +169,7 @@ zohoDeskRouter.post('/bulk-generate', async (req, res) => {
                 ageInDays: ticket.ageInDays,
                 webUrl: ticket.webUrl,
                 generatedResponse: generated.response,
+                similarResponses: generated.similarResponses,
                 userName: generated.userName,
             };
         })

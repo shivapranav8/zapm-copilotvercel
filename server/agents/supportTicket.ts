@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-import { z } from 'zod';
+import { findSimilarResponses, extractCleanReply, loadCombinedEmbeddings } from '../utils/supportTicketVectorDB';
 import { generateZohoNativeResponse } from '../templates/zohoNativeTemplate';
 import { CommunityResponseData } from '../templates/communityResponseTemplate';
 
@@ -17,6 +17,11 @@ const SupportTicketInputSchema = z.object({
 // Output schema
 const SupportTicketOutputSchema = z.object({
     response: z.string().describe('Generated support response in HTML format'),
+    similarResponses: z.array(z.object({
+        url: z.string(),
+        excerpt: z.string(),
+        similarity: z.number(),
+    })).describe('Similar past responses used as reference'),
     userName: z.string().optional().describe('Extracted user name from context'),
 });
 
@@ -36,6 +41,21 @@ export async function generateSupportTicketResponse(
     console.log('📝 Community Link:', input.communityLink);
     console.log('📝 Developer Notes:', input.developerNotes.substring(0, 100) + '...');
 
+    // Fetch similar responses for UI display only — NOT used in AI generation
+    // Gracefully skip if embeddings unavailable (e.g. Vercel environment)
+    const queryParts = [
+        input.developerNotes,
+        input.problemStatement || '',
+        input.prdContent ? `Context: ${input.prdContent.substring(0, 500)}` : '',
+    ].filter(Boolean);
+    let similarResponses: Awaited<ReturnType<typeof findSimilarResponses>> = [];
+    try {
+        await loadCombinedEmbeddings();
+        similarResponses = await findSimilarResponses(queryParts.join(' '), 5);
+    } catch (e) {
+        console.warn('⚠️ Embeddings unavailable, skipping similar responses');
+    }
+
     const hasDelay = input.includeDelayApology === true;
     const hasDeveloperNotes = input.developerNotes &&
         input.developerNotes !== 'Answer the customer\'s question directly based on your Zoho Analytics knowledge.';
@@ -50,16 +70,13 @@ export async function generateSupportTicketResponse(
 ${input.problemStatement || 'No conversation history available.'}
 
 ---
-${hasDeveloperNotes ? `**DEVELOPER / TECHNICAL NOTES** — Use this as your ONLY technical truth.
-- If these notes say a requirement is "vague" or ask for "clarification", your response MUST focus on asking the customer for those details.
-- Do NOT provide a solution if these notes indicate that more information is needed.
-- Do not add, infer, or hallucinate beyond what is written here.
-
+${hasDeveloperNotes ? `**DEVELOPER / TECHNICAL NOTES** — Use this as your primary technical source. Do not add, infer, or hallucinate beyond what is written here:
 ${input.developerNotes}
 
-` : ''}**YOUR TASK**: Write a reply that responds SPECIFICALLY to the customer's LATEST message in the conversation above, while strictly following the **DEVELOPER / TECHNICAL NOTES** above.
-- If the developer notes contain a question for the customer or indicate a need for details, ask those questions directly.
+` : ''}**YOUR TASK**: Write a reply that responds SPECIFICALLY to the customer's LATEST message in the conversation above.
 - Do NOT repeat information or workarounds already given in earlier agent replies.
+- If the customer's latest message is a feature request or feedback, acknowledge it, empathise, and log it as a feature request.
+- If the customer asked a new question, answer it.
 - If no developer notes are provided, base your reply solely on the conversation history.
 
 **DELAY**: ${hasDelay ? 'YES — ticket is over 7 days old. You MUST start with "Sorry for the delay in getting back to you."' : 'NO — ticket is recent. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
@@ -68,25 +85,27 @@ ${input.developerNotes}
 
 **MANDATORY ZOHO ANALYTICS SUPPORT STYLE GUIDE** (apply to every response):
 
-1. START WITH EMPATHY AND CONTEXT — Acknowledge that the customer is blocked on a specific issue. Tailor your acknowledgment to the customer's specific problem.
-   - Example (Delay): "Sorry for the delay in getting back to you. We understand your concern regarding [specific area/problem]."
+1. EMPATHY FIRST — Open with the line above based on delay status. Always acknowledge the customer's situation. Example: "We understand how important accurate reporting is for your analysis."
 
-2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA — Mention the affected part (e.g., pivot reports, data sync).
+2. IDENTIFY THE ZOHO ANALYTICS AREA — Explicitly name the affected area: data import/sync, report creation (tables/pivots/charts), dashboards, formula columns, query tables, sharing/permissions, performance, or integrations (Zoho CRM, Books, Desk). Example: "This seems to be related to aggregate formula behavior in pivot reports."
 
-3. VALIDATE THE CUSTOMER’S USE CASE — Restate your understanding of the customer's goal. If the requirement is vague (as per developer notes), state that you'd like to understand the use case better.
+3. VALIDATE THE USE CASE — Restate what the customer is trying to achieve. Example: "From your message, I understand that you want to calculate monthly revenue growth in a pivot report. Please let us know if this understanding is correct."
 
-4. ASK FOR REQUIRED DETAILS FIRST — If the **DEVELOPER NOTES** indicate information is missing (vague requirement, missing table name, etc.), your PRIMARY task is to ask for these details. 
-   - CRITICAL: If you are asking for clarification, do NOT provide a multi-step solution. Keep the focus on getting the right information first.
+4. ASK FOR DETAILS WHEN NEEDED — If Developer Notes indicate more info is needed, ask clearly. Common asks: workspace name, table name, report type, formula used, screenshot of error/config, data source (CSV/Zoho CRM/API). Example: "To assist you better, could you please share a screenshot of the report configuration and the formula you are using?"
 
-5. PROVIDE SOLUTIONS ONLY WHEN CERTAIN — ONLY provide step-by-step solutions if the **DEVELOPER NOTES** contain a concrete answer or if the solution is 100% clear from the context. Otherwise, stick to asking for details.
+5. STEP-BY-STEP SOLUTIONS — If Developer Notes contain a concrete answer, present it with numbered steps. Keep steps short and simple.
 
-6. HANDLING FEATURE LIMITATIONS — Acknowledge the limitation and offer a workaround. Never just say it's not possible.
+6. FEATURE LIMITATIONS — If something is not supported, acknowledge it and always offer a workaround. Never end a response by only saying something is not possible.
 
-7. HANDLING FEATURE REQUESTS — Appreciate the suggestion and confirm it's shared with the product team. Do NOT promise timelines.
+7. FEATURE REQUESTS — Say: "This has been logged as a feature request with our Zoho Analytics product team for future consideration." Do NOT promise timelines or say "coming soon."
 
-8. MAINTAIN ZOHO TONE — Polite, calm, professional. No internal jargon.
+8. PERFORMANCE/SYNC ISSUES — Acknowledge urgency, suggest optimizations (e.g., reduce grouped columns), and ask for logs if needed.
 
-9. END WITH A CLEAR NEXT STEP — Example: "Please try the above steps..." or "Please share the requested details so we can assist you further."
+9. ESCALATION — If needed: "We've shared this with our technical team for further analysis. We'll update you once we have more details."
+
+10. TONE — Polite, calm, neutral, professional. Avoid internal jargon (no "backend job", "database shard"). Safe phrases: "Thank you for using Zoho Analytics." / "We understand your reporting requirement." / "We'll be happy to assist further."
+
+11. END WITH A CLEAR NEXT STEP — Always close with: "Please try the above steps and let us know if the issue persists." or "Feel free to reach out if you need any clarification."
 
 ---
 
@@ -138,6 +157,11 @@ Return ONLY this JSON (no markdown, no extra text):
 
     return {
         response: finalHtml,
+        similarResponses: similarResponses.map(sr => ({
+            url: sr.response.topic_url,
+            excerpt: extractCleanReply(sr.response.reply_text).substring(0, 200),
+            similarity: sr.similarity,
+        })),
         userName,
     };
 }
