@@ -38,10 +38,57 @@ export async function generateSupportTicketResponse(
     console.log('📝 Developer Notes:', input.developerNotes ? input.developerNotes.substring(0, 100) + '...' : 'NONE');
 
     const hasDelay = input.includeDelayApology === true;
-    const hasDeveloperNotes = input.developerNotes &&
-        input.developerNotes !== 'Answer the customer\'s question directly based on your Zoho Analytics knowledge.';
+    const devNotes = input.developerNotes || "";
+    const hasDeveloperNotes = devNotes.length > 0 &&
+        devNotes !== "Answer the customer's question directly based on your Zoho Analytics knowledge.";
+    const hasUIDevNotes = devNotes.includes("[UI DEVELOPER NOTES]");
 
-    const responderName = input.responderName || 'Shiva Pranav S';
+    const responderName = input.responderName || "Shiva Pranav S";
+
+    const contextSection = hasDeveloperNotes
+        ? "**TECHNICAL CONTEXT**:\n" + devNotes
+        : "**NO TECHNICAL CONTEXT PROVIDED. USE YOUR INTERNAL ZOHO ANALYTICS KNOWLEDGE.**";
+
+    const delayLine = hasDelay
+        ? 'DELAYED (>7 days). Include "Sorry for the delay in getting back to you." near the start.'
+        : 'NOT DELAYED. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."';
+
+    const uiOverrideGuide = [
+        "*** UI DEVELOPER NOTES OVERRIDE MODE - THE STYLE GUIDE BELOW DOES NOT APPLY ***",
+        "",
+        "The [UI DEVELOPER NOTES] above are your ONLY source of truth.",
+        "Write a SHORT, polite message (2-4 sentences) that relays EXACTLY what those notes say.",
+        "",
+        "STRICT RULES:",
+        "- Do NOT add SQL queries or code examples",
+        "- Do NOT suggest workarounds or alternatives",
+        "- Do NOT add step-by-step solutions",
+        "- Do NOT expand beyond what the notes say",
+        '- If the notes say "we are working on X" -- say exactly that',
+        "- If the notes say no ETA -- do NOT invent one",
+    ].join("\n");
+
+    const fullStyleGuide = [
+        "**MANDATORY 14-POINT ZOHO ANALYTICS SUPPORT STYLE GUIDE**:",
+        "1. START WITH EMPATHY AND CONTEXT -- Acknowledge that the customer is blocked.",
+        "2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA -- Mention the part (e.g., <strong>Query Table</strong>, <strong>Pivot View</strong>, etc.).",
+        "3. VALIDATE THE CUSTOMER'S USE CASE -- Restate their specific goal.",
+        "4. ASK FOR REQUIRED DETAILS WHEN NEEDED -- If info is missing, ask.",
+        "5. PROVIDE CLEAR, STEP-BY-STEP SOLUTIONS -- Be proactive.",
+        "6. HANDLING FEATURE LIMITATIONS -- Offer workarounds.",
+        "7. HANDLING FEATURE REQUESTS -- Share with the product team.",
+        "8. USE SAMPLES, EXAMPLES, AND SCREENSHOTS -- Format SQL with <br>.",
+        "9. HANDLE PERFORMANCE OR SYNC ISSUES CAREFULLY.",
+        "10. ROUTING TO THE RIGHT TEAM.",
+        "11. MAINTAIN ZOHO TONE -- Polite, calm, professional.",
+        "12. END WITH A CLEAR NEXT STEP.",
+        '13. SAFE PHRASES -- e.g., "Thank you for using <strong>Zoho Analytics</strong>".',
+        "14. FINAL CHECKLIST -- Ensure <strong> tags for EVERY feature mention.",
+        "",
+        "If [ZOHO DESK PRIVATE THREADS/COMMENTS] exist, use them as your technical source. Do NOT add solutions not mentioned there.",
+    ].join("\n");
+
+    const instructionSection = hasUIDevNotes ? uiOverrideGuide : fullStyleGuide;
 
     // Generate response using LLM
     const prompt = `You are ${responderName} from the Zoho Analytics Support team.
@@ -51,53 +98,23 @@ export async function generateSupportTicketResponse(
 ${input.problemStatement || 'No conversation history available.'}
 
 ---
-${hasDeveloperNotes ? `**TECHNICAL CONTEXT (PRIVATE THREADS / DEV NOTES)**:
-${input.developerNotes}
-GIVEN CONTEXT IS YOUR ONLY SOURCE. DO NOT ADD OR SUGGEST SOLUTIONS NOT MENTIONED HERE.
-` : '**NO TECHNICAL CONTEXT PROVIDED. USE YOUR INTERNAL ZOHO ANALYTICS KNOWLEDGE.**'}
+${contextSection}
 
-**SOURCE PRIORITY**:
-1. **[UI DEVELOPER NOTES]**: ABSOLUTE TOP PRIORITY. If this exists, follow it word-for-word. Do NOT add workarounds, SQL, or solutions not mentioned in it. If the notes say the issue is being worked on — say exactly that. If they say no ETA — do NOT give one. The style guide below is OVERRIDDEN by UI Developer Notes.
-2. **[LATEST PRIVATE NOTE]**: Most recent technical update from an agent. Use this over older notes or workarounds.
-3. **[OLDER PRIVATE NOTE]**: Background context only.
-4. **INTERNAL KNOWLEDGE**: Only if ALL above are missing.
+**DELAY STATUS**: ${delayLine}
 
-**CLARIFICATION VS SOLUTION (CRITICAL)**:
-- If ANY note says **"vague"** or **"ask for clarification"** — do NOT provide a solution or SQL. Ask the customer for more details.
-- If UI Developer Notes say the issue is being worked on / no ETA / escalated — tell the customer exactly that. Do NOT suggest a workaround.
-- Only be proactive with solutions if no notes exist at all.
-
-**DELAY STATUS**: ${hasDelay ? 'DELAYED (>7 days). Start with "Sorry for the delay in getting back to you."' : 'NOT DELAYED. Start with "Thank you for reaching out to us regarding your Zoho Analytics workspace."'}
+---
+${instructionSection}
 
 ---
 
-**MANDATORY 14-POINT ZOHO ANALYTICS SUPPORT STYLE GUIDE**:
-1. START WITH EMPATHY AND CONTEXT — Acknowledge that the customer is blocked.
-2. IDENTIFY THE EXACT ZOHO ANALYTICS AREA — Mention the part (e.g., **<strong>Query Table</strong>**, **<strong>Pivot View</strong>**, **<strong>Formula Column</strong>**, etc.).
-3. VALIDATE THE CUSTOMER’S USE CASE — Restate their specific goal.
-4. ASK FOR REQUIRED DETAILS WHEN NEEDED — If info is missing, ask.
-5. PROVIDE CLEAR, STEP-BY-STEP SOLUTIONS — Be proactive.
-6. HANDLING FEATURE LIMITATIONS — Offer workarounds.
-7. HANDLING FEATURE REQUESTS — Share with the product team.
-8. USE SAMPLES, EXAMPLES, AND SCREENSHOTS — Format SQL with <br>.
-9. HANDLE PERFORMANCE OR SYNC ISSUES CAREFULLY.
-10. ROUTING TO THE RIGHT TEAM.
-11. MAINTAIN ZOHO TONE — Polite, calm, professional.
-12. END WITH A CLEAR NEXT STEP.
-13. SAFE PHRASES — e.g., "Thank you for using **<strong>Zoho Analytics</strong>**".
-14. FINAL CHECKLIST — Ensure **<strong>** tags for EVERY feature mention.
-
----
-
-**HTML FORMAT & BOLDING RULES (ULTRA-STRICT)**:
-- DO NOT USE MARKDOWN. No ** or * anywhere in the output. Only HTML.
-- **BOLD EVERY FEATURE**: Wrap every mention of Zoho Analytics, Zoho CRM, Query Table, Pivot View, Formula Column, Data Sources, Dashboard, and Reports in <strong> tags.
-- **SQL/CODE**: Bold keywords. <strong>SELECT</strong> * <br><strong>FROM</strong> Table
+**HTML FORMAT**:
+- DO NOT USE MARKDOWN. No ** or * anywhere. Only HTML.
+- Wrap feature names in <strong> tags (Zoho Analytics, Query Table, etc.)
 - Separate paragraphs with <br><br>.
-- The template auto-adds greeting and signature.
+- The template auto-adds greeting and signature — do not include them.
 
-Return **ONLY** a valid JSON object. No markdown preamble, no closing signature.
-{"mainContent": "[your HTML body content]", "userName": "[customer name from context, or 'there']"}
+Return ONLY a valid JSON object:
+{"mainContent": "[your HTML body content]", "userName": "[customer name from context, or there]"}
 `;
 
     const response = await model.invoke(prompt);
