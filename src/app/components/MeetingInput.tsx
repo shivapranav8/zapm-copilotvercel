@@ -26,7 +26,9 @@ function formatDuration(ms: number): string {
 function formatStartTime(raw: string): string {
   if (!raw) return '';
   try {
-    return new Date(raw).toLocaleString('en-IN', {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw; // e.g. "Thu Dec 18, 17:00 IST" — show as-is
+    return d.toLocaleString('en-IN', {
       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
     });
   } catch {
