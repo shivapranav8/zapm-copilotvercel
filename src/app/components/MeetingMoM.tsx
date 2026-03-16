@@ -22,6 +22,7 @@ export interface MeetingMoMData {
   decisions: string[];
   actionItems: ActionItem[];
   nextMeeting?: string;
+  transcript?: string;
 }
 
 interface MeetingMoMProps {
@@ -84,11 +85,16 @@ export function MeetingMoM({ data, onUpdate, onShare, onDownload }: MeetingMoMPr
     setIsRegenerating(section);
     toast.info(`Regenerating ${section === 'discussion' ? 'Key Discussions' : 'Actions & Decisions'} from transcript...`);
     try {
+      if (!data.transcript) {
+        toast.error('Transcript not available — please regenerate the full MoM first.');
+        setIsRegenerating(null);
+        return;
+      }
       const res = await apiFetch('/api/meeting-mom/regenerate-section', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ section, verbosity, momId: data.id }),
+        body: JSON.stringify({ section, verbosity, transcript: data.transcript, meetingTitle: data.meetingTitle, attendees: data.attendees }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

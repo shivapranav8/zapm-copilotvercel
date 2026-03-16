@@ -241,42 +241,41 @@ router.post('/meeting-mom/generate', async (req, res, next) => {
 // POST /api/meeting-mom/regenerate-section
 router.post('/meeting-mom/regenerate-section', async (req, res) => {
     try {
-        const { section, verbosity, momId } = req.body;
-        if (!section || !momId) {
-            return res.status(400).json({ error: 'section and momId are required' });
-        }
-
-        // Load the stored MoM to get the original transcript
-        const stored = await getMoMById(momId);
-        if (!stored) {
-            return res.status(404).json({ error: 'MoM not found. Please regenerate the full MoM first.' });
-        }
-        if (!stored.transcript) {
-            return res.status(400).json({ error: 'No transcript stored for this MoM. Please regenerate the full MoM to save the transcript.' });
+        const { section, verbosity, transcript, meetingTitle, attendees } = req.body;
+        if (!section || !transcript) {
+            return res.status(400).json({ error: 'section and transcript are required' });
         }
 
         const { ChatOpenAI } = await import('@langchain/openai');
         const model = new ChatOpenAI({ modelName: 'gpt-4o', temperature: 0.3 });
 
         const verbosityGuide = verbosity === 'brief'
-            ? 'Be concise — 1-2 sentences per point, minimal items.'
+            ? 'Be concise — 1-2 sentences per point.'
             : verbosity === 'detailed'
-            ? 'Be thorough — 3-5 sentences per point, capture nuances and specifics.'
-            : 'Be balanced — clear and complete without over-explaining.';
+            ? 'Be thorough — 4-6 sentences per discussion point, capture nuances, quotes, and specifics.'
+            : 'Be descriptive — 3-4 sentences per discussion point, NEVER write one-liners or short labels.';
 
-        const transcriptBlock = `\n**Original Meeting Transcript (source of truth)**:\n${stored.transcript}\n`;
+        const transcriptBlock = `\n**Meeting Transcript (source of truth)**:\n${transcript}\n`;
         let prompt = '';
         let updatedFields: any = {};
 
         if (section === 'discussion') {
-            prompt = `You are a meeting minutes assistant. Using ONLY the original transcript below, regenerate the Summary and Key Discussions section.
+            prompt = `You are a meeting minutes assistant. Using ONLY the transcript below, regenerate the Summary and Key Discussions.
 ${transcriptBlock}
-Meeting Title: ${stored.meetingTitle}
-Attendees: ${stored.attendees?.join(', ')}
+Meeting Title: ${meetingTitle || 'Team Meeting'}
+Attendees: ${(attendees || []).join(', ')}
 
-Verbosity: ${verbosityGuide}
+Verbosity instruction: ${verbosityGuide}
 
-Return ONLY valid JSON:
+KEY DISCUSSIONS RULES (CRITICAL):
+- NEVER write a one-liner or a short label like "Feature X discussed."
+- Each entry must be a full paragraph covering: what was discussed, why it matters, concerns raised, and direction agreed.
+- If you cannot write 3 sentences about a topic, merge it with a related point.
+- BAD: "Data pipeline performance was discussed."
+- GOOD: "The team reviewed recent slowdowns in the data pipeline affecting daily report delivery times. It was noted that the bottleneck occurs during the transformation step when processing large fact tables, and two team members had independently observed this in their dashboards. The group agreed to profile the ETL job this week and consider adding incremental processing as a short-term fix."
+- Cover EVERY distinct topic raised in the transcript — do not skip any discussion point, no matter how brief.
+
+Return ONLY valid JSON (no markdown):
 { "summary": "string", "keyDiscussions": ["string", ...] }`;
 
             const response = await model.invoke(prompt);
@@ -285,18 +284,22 @@ Return ONLY valid JSON:
             updatedFields = { summary: parsed.summary, keyDiscussions: parsed.keyDiscussions };
 
         } else if (section === 'actions') {
-            prompt = `You are a meeting minutes assistant. Using ONLY the original transcript below, regenerate the Decisions Made and Action Items section.
+            prompt = `You are a meeting minutes assistant. Using ONLY the transcript below, regenerate the Decisions Made and Action Items.
 ${transcriptBlock}
-Meeting Title: ${stored.meetingTitle}
-Attendees: ${stored.attendees?.join(', ')}
-Date: ${stored.date}
+Meeting Title: ${meetingTitle || 'Team Meeting'}
+Attendees: ${(attendees || []).join(', ')}
 
-Verbosity: ${verbosityGuide}
+Rules:
+- Only include decisions explicitly agreed upon in the meeting.
+- Only include action items explicitly assigned or volunteered.
+- Assignee: name if mentioned, otherwise "Unassigned".
+- Due date: only if explicitly stated, otherwise "TBD". Do NOT invent dates.
+- Priority: infer from urgency words only ("urgent", "ASAP", "blocker"). Otherwise "Medium".
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown):
 {
   "decisions": ["string", ...],
-  "actionItems": [{ "id": "string", "task": "string", "assignee": "string", "dueDate": "Mon DD, YYYY", "priority": "High|Medium|Low", "status": "Pending|In Progress|Completed" }]
+  "actionItems": [{ "id": "string", "task": "string", "assignee": "string", "dueDate": "Mon DD, YYYY or TBD", "priority": "High|Medium|Low", "status": "Pending|In Progress|Completed" }]
 }`;
 
             const response = await model.invoke(prompt);

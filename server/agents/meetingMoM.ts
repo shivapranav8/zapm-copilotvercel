@@ -111,7 +111,7 @@ Generate an extensive JSON report. Focus on capturing technical nuances, specifi
 1. **Meeting Title**: Specific and descriptive.
 2. **Attendees**: List names clearly heard or mentioned. Only add a role if explicitly stated. Otherwise just the name.
 3. **Summary**: Comprehensive 5-8 sentence paragraph capturing the core narrative and business value.
-4. **Key Discussions**: DETAILED list. For each point, include 2-3 sentences of context. Quote heavily.
+4. **Key Discussions**: DETAILED list. For each point write 3-5 sentences. NEVER write a one-liner. Cover what was discussed, why it matters, concerns raised, quotes from participants, and any direction agreed. If a topic has insufficient transcript content, combine it with a related point rather than writing a shallow entry.
 5. **Decisions Made**: Precise decisions explicitly agreed upon.
 6. **Action Items**: Detailed tasks explicitly assigned.
    - Assignee: only if explicitly named. Use "Unassigned" otherwise.
@@ -153,7 +153,7 @@ Generate structured meeting minutes with the following information:
 1. **Meeting Title**: Infer from the transcript or use "${input.meetingTitle || 'Team Meeting'}"
 2. **Attendees**: List all participants mentioned in the transcript. Only add a role if explicitly stated (e.g., "I'm the PM"). Otherwise just the name. If no names audible, return empty array.
 3. **Summary**: 3-5 sentence overview of what was discussed, decided, and what happens next.${input.visualContext ? ' Incorporate visual information if relevant.' : ''}
-4. **Key Discussions**: For each topic discussed, write 2-3 full descriptive sentences explaining WHAT was said, WHY it matters, and any context or concerns raised. Do NOT write short labels or titles (e.g., "Live connect feature" is wrong — instead write "The team discussed the live connect feature configuration, noting that the current setup requires manual steps that could be automated. There were concerns about latency in the data sync, and it was suggested to add retry logic before the next release."). Be thorough — cover every distinct topic.${input.visualContext ? ' Include information from slides/diagrams if shown.' : ''}
+4. **Key Discussions**: For each topic discussed, write 3-4 full descriptive sentences. NEVER write a one-liner or a short label. Each entry must cover: (a) what specifically was discussed, (b) why it matters or what problem it addresses, (c) any concerns, constraints, or context raised, (d) any next steps or direction agreed on for that topic. BAD example: "Live connect feature discussed." GOOD example: "The team reviewed the live connect feature configuration and noted that the current setup requires several manual steps from the customer side that could realistically be automated. There were concerns raised about latency during data sync, particularly for workspaces with large datasets. It was suggested to add a retry logic layer before the next release to handle intermittent failures gracefully. The team agreed this would be a high priority item for the upcoming sprint." Write like this for EVERY discussion point. If you cannot find enough content in the transcript to write 3 sentences, combine it with a related topic instead of writing a shallow entry.${input.visualContext ? ' Include information from slides/diagrams if shown.' : ''}
 5. **Decisions Made**: Clear decisions that were agreed upon. If none, return empty array.
 6. **Action Items**: All tasks assigned or agreed upon.
    - Assignee: use the name if mentioned, otherwise "Unassigned".
@@ -194,7 +194,8 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with this exact st
 - Assign sequential IDs to action items ("1", "2", "3", ...)
 - Be specific and actionable in action items
 - If the transcript is in Tamil or Tanglish, focus on the English technical content — skip Tamil filler words
-${input.visualContext ? '- Incorporate information from slides, diagrams, or screen shares when relevant\n' : ''}- Return ONLY the JSON object, no other text
+${input.visualContext ? '- Incorporate information from slides, diagrams, or screen shares when relevant\n' : ''}- Key Discussions must cover EVERY distinct topic raised in the transcript — do not skip any discussion point, no matter how brief
+- Return ONLY the JSON object, no other text
 `;
 
     const response = await model.invoke(prompt);
