@@ -475,6 +475,24 @@ zohoMeetingRouter.post('/process', async (req, res) => {
 
     const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
+    // Clean up leftover temp files older than 15 mins from previous crashed requests
+    // Safe for concurrent users — only touches stale files, not active ones
+    try {
+        const cutoff = Date.now() - 15 * 60 * 1000;
+        const tmpDir = os.tmpdir();
+        fs.readdirSync(tmpDir)
+            .filter(f => f.startsWith('zoho_rec_'))
+            .forEach(f => {
+                try {
+                    const full = path.join(tmpDir, f);
+                    if (fs.statSync(full).mtimeMs < cutoff) {
+                        fs.unlinkSync(full);
+                        console.log(`🧹 Cleaned stale tmp file: ${f}`);
+                    }
+                } catch { /* ignore individual file errors */ }
+            });
+    } catch { /* ignore cleanup errors — never block the request */ }
+
     const token = resolveToken(req);
     const jobId = uuidv4();
     const tmpFile = path.join(os.tmpdir(), `zoho_rec_${jobId}.mp4`);
