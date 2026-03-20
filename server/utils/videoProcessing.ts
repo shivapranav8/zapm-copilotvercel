@@ -47,7 +47,9 @@ export async function extractAudioFromVideo(videoPath: string): Promise<string> 
             ffmpeg(videoPath)
                 .output(audioPath)
                 .audioCodec('libmp3lame')
-                .audioBitrate('128k')
+                .audioBitrate('32k')   // 32k is enough for speech; 4× smaller than 128k → faster ffmpeg + smaller Whisper chunks
+                .audioFrequency(16000) // 16kHz mono — Whisper's native sample rate
+                .audioChannels(1)
                 .noVideo()
                 .outputOptions(['-map', '0:a:0'])  // Explicitly pick first audio stream
                 .on('start', (commandLine) => {

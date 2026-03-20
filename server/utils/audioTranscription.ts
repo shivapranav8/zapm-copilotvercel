@@ -63,14 +63,16 @@ async function transcribeLargeAudio(audioFilePath: string): Promise<string> {
     }
 
     try {
-        // Split audio into 10-minute chunks (approx 10MB for 128k bitrate)
+        // Split audio into 20-minute chunks (approx 5MB at 32k bitrate — well under Whisper's 25MB limit)
         await new Promise<void>((resolve, reject) => {
             ffmpeg(audioFilePath)
                 .output(path.join(chunkDir, 'chunk_%03d.mp3'))
                 .audioCodec('libmp3lame')
-                .audioBitrate('128k')
+                .audioBitrate('32k')
+                .audioFrequency(16000)
+                .audioChannels(1)
                 .format('segment')
-                .outputOptions(['-segment_time', '600', '-reset_timestamps', '1'])
+                .outputOptions(['-segment_time', '1200', '-reset_timestamps', '1'])
                 .on('end', () => resolve())
                 .on('error', (err) => reject(err))
                 .run();
@@ -154,8 +156,24 @@ export async function transcribeVideo(videoFilePath: string): Promise<{ transcri
     console.log('\n🎬 Processing video file...');
     console.log(`📁 Video: ${videoFilePath}`);
 
+    const videoStats = fs.statSync(videoFilePath);
+    const videoSizeMB = videoStats.size / (1024 * 1024);
+
+    // Skip ffmpeg entirely if the video file is under 25MB — send directly to Whisper
+    // This saves 2+ minutes of ffmpeg processing on Vercel
+    if (videoSizeMB <= 24) {
+        console.log(`⚡ Video is ${videoSizeMB.toFixed(1)} MB — sending directly to Whisper (no ffmpeg needed)`);
+        try {
+            const transcript = await callWhisperWithRetry(videoFilePath);
+            return { transcript, audioPath: videoFilePath };
+        } catch (error) {
+            console.warn('⚠️  Direct video transcription failed, falling back to ffmpeg:', error);
+            // fall through to ffmpeg path
+        }
+    }
+
     try {
-        // Extract audio from video
+        // Extract audio from video via ffmpeg
         const audioPath = await extractAudioFromVideo(videoFilePath);
 
         // Transcribe the extracted audio
