@@ -465,19 +465,37 @@ export function buildTicketContext(ticket: ZohoDeskTicket, threads: ZohoDeskThre
         publicLines.push(`\nInitial Description:\n${ticket.description}`);
     }
 
-    const publicThreads = threads.filter(t => !t.isPrivate);
-    // Sort private threads by createdTime descending to find the latest
+    // Sort public threads oldest→newest so conversation reads naturally
+    const publicThreads = threads
+        .filter(t => !t.isPrivate)
+        .sort((a, b) => new Date(a.createdTime).getTime() - new Date(b.createdTime).getTime());
+
+    // Sort private threads newest→oldest
     const privateThreads = threads
         .filter(t => t.isPrivate)
         .sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
 
     if (publicThreads.length > 0) {
-        publicLines.push('\nCustomer Conversation:');
-        for (const thread of publicThreads) {
+        // Find the index of the last customer message
+        let latestCustomerIdx = -1;
+        for (let i = publicThreads.length - 1; i >= 0; i--) {
+            if (publicThreads[i].author.type === 'CONTACT') {
+                latestCustomerIdx = i;
+                break;
+            }
+        }
+
+        publicLines.push('\nConversation History (oldest first — for context only):');
+        for (let i = 0; i < publicThreads.length; i++) {
+            const thread = publicThreads[i];
             const authorType = thread.author.type === 'CONTACT' ? 'Customer' : 'Agent';
             const strippedContent = thread.content.replace(/<[^>]*>/g, '').trim();
             if (strippedContent) {
-                publicLines.push(`\n[${authorType} - ${thread.author.name}]:\n${strippedContent}`);
+                if (i === latestCustomerIdx) {
+                    publicLines.push(`\n[LATEST CUSTOMER MESSAGE — RESPOND TO THIS]\n[${authorType} - ${thread.author.name}]:\n${strippedContent}`);
+                } else {
+                    publicLines.push(`\n[${authorType} - ${thread.author.name}]:\n${strippedContent}`);
+                }
             }
         }
     }

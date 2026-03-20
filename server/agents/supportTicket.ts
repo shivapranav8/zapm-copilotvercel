@@ -96,12 +96,13 @@ DEVELOPER NOTES (your response must reflect this exactly):
 ${uiNotes}
 """
 
-TICKET CONVERSATION (use only to identify: customer name, specific feature/area — nothing else):
+TICKET CONVERSATION (the [LATEST CUSTOMER MESSAGE] is what you are replying to — use the rest only for context):
 """
 ${ticket}
 """
 
 HOW TO WRITE THE RESPONSE:
+- You are replying specifically to the [LATEST CUSTOMER MESSAGE]. Do not answer older messages.
 - Acknowledge the customer's issue, naming their specific feature (bold with <strong>).
 - Communicate the developer notes professionally and empathetically.
 - If notes say "working on a fix / agent / solution": say the team is actively working on it. Do NOT add workarounds or say the feature is unsupported. End with: "We will notify you as soon as it is ready."
@@ -125,12 +126,13 @@ INTERNAL NOTES / PRIVATE THREADS (newest first):
 ${privateThreads}
 """
 
-TICKET CONVERSATION:
+TICKET CONVERSATION (the [LATEST CUSTOMER MESSAGE] is what you are replying to — use the rest only for context):
 """
 ${ticket}
 """
 
 HOW TO WRITE THE RESPONSE:
+- You are replying specifically to the [LATEST CUSTOMER MESSAGE]. Do not answer older messages.
 - The [LATEST PRIVATE NOTE] is the team's current direction. Follow it exactly.
 - If the latest note says "ask for clarification / more details / explain further / need more info": ask ONLY that. Do NOT provide a solution, steps, or SQL. Ignore any solutions in older notes.
 - If the latest note describes a solution or workaround: present it to the customer professionally.
@@ -149,14 +151,14 @@ function buildPriority3Prompt(ticket: string, delayLine: string, responderName: 
 
 PRIORITY INSTRUCTION: No developer notes or internal context available. Use your Zoho Analytics knowledge to provide the best possible solution.
 
-TICKET CONVERSATION:
+TICKET CONVERSATION (the [LATEST CUSTOMER MESSAGE] is what you are replying to — use the rest only for context):
 """
 ${ticket}
 """
 
 HOW TO WRITE THE RESPONSE:
-- Diagnose the issue from the ticket conversation.
-- Provide a clear, step-by-step solution using your Zoho Analytics knowledge.
+- You are replying specifically to the [LATEST CUSTOMER MESSAGE]. Do not answer older messages.
+- Diagnose the issue or request from that message and respond to it directly.
 - ${delayLine}
 - Apply all relevant rules from the style guide below.
 
