@@ -131,8 +131,10 @@ ${ticket}
 """
 
 HOW TO WRITE THE RESPONSE:
-- Extract the key solution or finding from the internal notes.
-- Present it to the customer in clear, professional language (no internal jargon).
+- Read the internal notes carefully to determine their intent:
+  • If notes say "ask for clarification / more details / explain further / need more info": ask ONLY that. Do NOT provide a solution, steps, or SQL. Nothing else.
+  • If notes describe a solution, workaround, or finding: present it to the customer in clear, professional language (no internal jargon).
+  • If notes say the team is investigating or working on it: say so and do not fabricate a solution.
 - Do NOT copy internal notes verbatim — translate them into customer-friendly language.
 - ${delayLine}
 - Apply all relevant rules from the style guide below.
