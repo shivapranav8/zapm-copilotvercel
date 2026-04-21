@@ -144,7 +144,9 @@ export function ZipUpload({ onUpload, onClose }: ZipUploadProps) {
         {/* Info */}
         <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Note:</strong> Upload a ZIP file containing your project documentation, requirements, or specifications. The AI will analyze the contents and generate a comprehensive PRD document.
+            <strong>ZIP (React folder):</strong> Upload a zipped React/TypeScript project — the AI reverse-engineers every feature, interaction, and edge case into a full PRD.<br />
+            <strong>DOCX (MRD):</strong> Upload a Marketing Requirements Document — the AI expands it into a granular functional PRD.<br />
+            <strong>Output:</strong> A <code>.zip</code> file containing both an <strong>Excel (.xlsx)</strong> and an <strong>HTML (.html)</strong> version of the PRD.
           </p>
         </div>
       </div>
