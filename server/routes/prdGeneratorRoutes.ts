@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import mammoth from 'mammoth';
 import { runPRDGenerator } from '../agents/prdGeneratorAgent';
 import { writePRDExcel } from '../utils/prdExcelWriter';
+import { writePRDHtml } from '../utils/prdHtmlWriter';
 
 export const prdGeneratorRouter = Router();
 
@@ -161,24 +162,33 @@ prdGeneratorRouter.post('/generate', upload.single('file'), async (req, res) => 
         const zohoToken = (req as any).session?.zoho?.accessToken;
         const prdData = await runPRDGenerator(content, originalname, sourceType, zohoToken, req);
 
-        // Step 3: Write Excel file
-        const excelBuffer = await writePRDExcel(prdData);
-
-        // Step 4: Return as downloadable file
+        // Step 3: Generate Excel + HTML
         const safeFeatureName = (prdData.featureName || 'PRD')
             .replace(/[^a-zA-Z0-9_\- ]/g, '')
             .replace(/\s+/g, '_')
             .slice(0, 60);
-        const filename = `PRD_${safeFeatureName}.xlsx`;
+
+        const [excelBuffer, htmlContent] = await Promise.all([
+            writePRDExcel(prdData),
+            Promise.resolve(writePRDHtml(prdData)),
+        ]);
+
+        // Step 4: Bundle both into a ZIP and send
+        const zip = new AdmZip();
+        zip.addFile(`PRD_${safeFeatureName}.xlsx`, excelBuffer);
+        zip.addFile(`PRD_${safeFeatureName}.html`, Buffer.from(htmlContent, 'utf-8'));
+        const zipBuffer = zip.toBuffer();
+
+        const zipFilename = `PRD_${safeFeatureName}.zip`;
 
         res.set({
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': String(excelBuffer.length),
+            'Content-Type': 'application/zip',
+            'Content-Disposition': `attachment; filename="${zipFilename}"`,
+            'Content-Length': String(zipBuffer.length),
         });
-        res.send(excelBuffer);
+        res.send(zipBuffer);
 
-        console.log(`✅ [PRD Generator] Sent ${filename} (${excelBuffer.length} bytes)`);
+        console.log(`✅ [PRD Generator] Sent ${zipFilename} (xlsx: ${excelBuffer.length}B, html: ${htmlContent.length}B, zip: ${zipBuffer.length}B)`);
     } catch (error) {
         console.error('❌ [PRD Generator] Failed:', error);
         res.status(500).json({

@@ -913,11 +913,11 @@ Generated on: ${new Date().toLocaleString()}
         throw new Error(errMsg);
       }
 
-      // Response is the Excel file — trigger browser download
+      // Response is a ZIP containing .xlsx + .html — trigger browser download
       const blob = await res.blob();
       const contentDisposition = res.headers.get('Content-Disposition') || '';
       const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-      const filename = filenameMatch?.[1] || `PRD_${file.name.replace(/\.[^.]+$/, '')}.xlsx`;
+      const filename = filenameMatch?.[1] || `PRD_${file.name.replace(/\.[^.]+$/, '')}.zip`;
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -930,7 +930,7 @@ Generated on: ${new Date().toLocaleString()}
 
       // Set a placeholder so the PRD page shows a success state
       setPrdExcelData({ productName: filename, version: '1.0', overview: 'Downloaded', objectives: [], targetUsers: [], features: [], requirements: [], timeline: [] });
-      toast.success(`PRD generated! "${filename}" downloaded.`);
+      toast.success(`PRD generated! "${filename}" downloaded (contains .xlsx + .html).`);
     } catch (error) {
       console.error('PRD generation error:', error);
       toast.error(`PRD generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -185,8 +185,8 @@ export function PRDGeneratorPage({ onBack, onUpload, prdData, isGenerating }: PR
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">PRD Generated!</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Your Excel PRD has been downloaded automatically.<br />
-                Check your Downloads folder for the .xlsx file.
+                Your PRD has been downloaded automatically.<br />
+                Check your Downloads folder for the .zip file containing the <strong>.xlsx</strong> and <strong>.html</strong> versions.
               </p>
               <button
                 onClick={() => setShowUpload(true)}
